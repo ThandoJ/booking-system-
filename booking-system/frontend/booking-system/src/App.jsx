@@ -1,205 +1,194 @@
 import { useState } from "react";
-import axios from "axios";
+import { motion } from "framer-motion";
 
 export default function App() {
   const [date, setDate] = useState("");
-  const [resource, setResource] = useState("Room");
-  const [slots, setSlots] = useState([]);
-  const [selectedTime, setSelectedTime] = useState(null);
+  const [selectedSeat, setSelectedSeat] = useState(null);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
-  const [bookings, setBookings] = useState([]);
-  const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
+  const [bookings, setBookings] = useState([]);
+  const [bookedSeats, setBookedSeats] = useState([]);
 
-  const fetchSlots = async () => {
-    if (!date) return alert("Please select a date");
+  // Seat Layout (like airplane rows)
+  const seats = [
+    { id: "1A", class: "first" },
+    { id: "1B", class: "first" },
+    { id: "1C", class: "first" },
+    { id: "1D", class: "first" },
 
-    setLoading(true);
-    try {
-    const res = await axios.get("http://localhost:5000/api/slots", {
-      params: { date, resource },
-    });
-    setSlots(res.data);
-    fetchBookings();
-    } catch (err) {
-      alert("Error fetching slots");
+    { id: "2A", class: "business" },
+    { id: "2B", class: "business" },
+    { id: "2C", class: "business" },
+    { id: "2D", class: "business" },
+
+    { id: "3A", class: "economy" },
+    { id: "3B", class: "economy" },
+    { id: "3C", class: "economy" },
+    { id: "3D", class: "economy" },
+
+    { id: "4A", class: "economy" },
+    { id: "4B", class: "economy" },
+    { id: "4C", class: "economy" },
+    { id: "4D", class: "economy" }
+  ];
+
+  const getSeatColor = (seatClass) => {
+    switch (seatClass) {
+      case "first":
+        return "bg-yellow-500";
+      case "business":
+        return "bg-blue-500";
+      case "economy":
+        return "bg-green-500";
+      default:
+        return "bg-gray-400";
     }
-    setLoading(false);
   };
 
-
-  // Fetch existing bookings
-  const fetchBookings = async () => {
-    try {
-      const res = await axios.get(
-        `http://localhost:5000/api/bookings/${date}/${resource}`
-      );
-      setBookings(res.data);
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
-  // Book a slot
-  const bookSlot = async () => {
-     if (!name || !email || !selectedTime) {
-      return alert("Please fill all fields");
+  const bookSeat = () => {
+    if (!name || !email || !date) {
+      setMessage("Please fill all fields");
+      return;
     }
 
-    try {
-    await axios.post("http://localhost:5000/api/bookings", {
+    const newBooking = {
+      id: Date.now(),
+      seat: selectedSeat,
       name,
       email,
-      date,
-      time: selectedTime,
-      resource,
-    });
+      date
+    };
 
-     setMessage("✅ Booking successful!");
-      setName("");
-      setEmail("");
-      setSelectedTime(null);
+    setBookings([...bookings, newBooking]);
+    setBookedSeats([...bookedSeats, selectedSeat]);
 
-      fetchSlots();
-    } catch (err) {
-      alert("Booking failed (slot may already be taken)");
-    }
+    setSelectedSeat(null);
+    setName("");
+    setEmail("");
+    setMessage("");
   };
 
-        // Delete booking
-  const deleteBooking = async (id) => {
-    try {
-      await axios.delete(`http://localhost:5000/api/bookings/${id}`);
-      setMessage("❌ Booking cancelled");
+  const deleteBooking = (id) => {
+    const bookingToDelete = bookings.find((b) => b.id === id);
 
-      fetchSlots();
-    } catch (err) {
-      alert("Error deleting booking");
-    }
+    setBookings(bookings.filter((b) => b.id !== id));
+    setBookedSeats(bookedSeats.filter((s) => s !== bookingToDelete.seat));
+  };
+
+  const updateBooking = (id) => {
+    const newName = prompt("Enter new name:");
+    if (!newName) return;
+
+    setBookings(
+      bookings.map((b) =>
+        b.id === id ? { ...b, name: newName } : b
+      )
+    );
   };
 
   return (
-    <div className="min-h-screen bg-gray-100 flex justify-center items-center p-6">
-      <div className="bg-white shadow-xl rounded-2xl p-6 w-full max-w-xl">
-        
-        <h1 className="text-3xl font-bold mb-6 text-center">
-          📅 Hotel Resturant Booking System
-        </h1>
+    <div className="min-h-screen bg-gradient-to-br from-black via-blue-900 to-gray-900 text-white">
+      {/* Header */}
+      <header className="p-6 text-center">
+        <h1 className="text-3xl font-bold">✈️ AeroLux Airlines</h1>
+      </header>
 
+      {/* Hero Section */}
+      <section className="text-center p-6">
+        <h2 className="text-4xl font-bold">Fly Beyond Limits</h2>
+        <p>Luxury travel made simple</p>
+      </section>
 
-      {/* Resource */}
-      
-       <div className="flex gap-2 mb-4">
-        <select
-        className="border p-2 flex-1"
-        value={resource}
-        onChange={(e) => setResource(e.target.value)}
-      >
-        <option>Room</option>
-        <option>Table</option>
-      </select>
+      {/* Booking Section */}
+      <section className="bg-white text-black max-w-3xl mx-auto p-6 rounded-xl shadow-xl">
+        <input
+          type="date"
+          className="border p-2 w-full mb-4"
+          onChange={(e) => setDate(e.target.value)}
+        />
 
-      {/* Date */}
-      <input
-        type="date"
-        className="border p-2 flext-1"
-        onChange={(e) => setDate(e.target.value)}
-      />
-      </div>
-
-      <button
-        onClick={fetchSlots}
-        className="bg-blue-500 text-white px-4 py-2 w-full rounded-lg"
-      >
-        {loading ? "Loading..." : "Check Availability"}
-      </button>
-
-      {/* Slots */}
-      <div className="mt-4 flex flex-wrap gap-2">
-        {slots.length === 0 && !loading && (
-           <p className="text-gray-500">No slots available</p>
-          )}
-
-        {slots.map((slot) => (
-          <button
-            key={slot}
-            onClick={() => setSelectedTime(slot)}
-            className={`px-4 py-2 rounded-lg border transition ${
-              selectedTime === slot
-                ? "bg-green-500 text-white"
-                : "hover:bg-gray-200"
-            }`}
-          >
-            {slot}
-          </button>
-        ))}
-      </div>
-
-      {/* Booking Form */}
-      {selectedTime && (
-        <div className="mt-6">
-          <h2 className="font-semibold mb-2">
-              Selected: {selectedTime}
-            </h2>
-
-          <input
-            placeholder="Name"
-            value={name}
-            className="border p-2 w-full mb-2"
-            onChange={(e) => setName(e.target.value)}
-          />
-
-          <input
-            placeholder="Email"
-            value={email}
-            className="border p-2 w-full mb-2"
-            onChange={(e) => setEmail(e.target.value)}
-          />
-
-          <button
-            onClick={bookSlot}
-            className="bg-green-500 text-white px-4 py-2 w-full rounded-lg"
-          >
-            Book Now
-          </button>
+        {/* Seat Map */}
+        <div className="grid grid-cols-4 gap-3">
+          {seats.map((s) => {
+            const booked = bookedSeats.includes(s.id);
+            return (
+              <motion.button
+                key={s.id}
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.9 }}
+                disabled={booked}
+                onClick={() => setSelectedSeat(s.id)}
+                className={`p-3 text-white rounded-lg shadow ${
+                  booked
+                    ? "bg-red-500 cursor-not-allowed"
+                    : getSeatColor(s.class)
+                } ${
+                  selectedSeat === s.id ? "ring-4 ring-black" : ""
+                }`}
+              >
+                {s.id}
+              </motion.button>
+            );
+          })}
         </div>
-      )}
 
-      {/*Message */}
-      {message && (
-        <p className="mt-4 text-center text-sm text-gray-700">
-          {messgae}
-        </p>
-      )}
+        {message && <p className="text-red-500 mt-3">{message}</p>}
 
-      {/* Booking List */}
-      <div className="mt-6">
-        <h2 className="font-bold mb-2">📋 Bookings</h2>
-      {bookings.length === 0 && (
-            <p className="text-gray-500">No bookings yet</p>
-          )}
-
-          {bookings.map((b) => (
-            <div
-              key={b.id}
-              className="border p-2 mb-2 flex justify-between items-center rounded-lg"
+        {/* Form */}
+        {selectedSeat && (
+          <div className="mt-4">
+            <input
+              placeholder="Name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              className="border p-2 w-full mb-2"
+            />
+            <input
+              placeholder="Email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="border p-2 w-full mb-2"
+            />
+            <button
+              onClick={bookSeat}
+              className="bg-green-600 text-white w-full p-2 rounded-lg"
             >
-              <span>
-                {b.time} - {b.name}
-              </span>
+              Confirm Booking
+            </button>
+          </div>
+        )}
+      </section>
 
+      {/* Bookings List */}
+      <section className="p-6 max-w-3xl mx-auto">
+        <h2 className="text-xl font-bold mb-3">Bookings</h2>
+        {bookings.map((b) => (
+          <div
+            key={b.id}
+            className="flex justify-between items-center border p-3 mt-2 rounded-lg bg-gray-800"
+          >
+            <span>
+              {b.seat} - {b.name} ({b.date})
+            </span>
+            <div>
+              <button
+                onClick={() => updateBooking(b.id)}
+                className="text-blue-400 mr-3"
+              >
+                Edit
+              </button>
               <button
                 onClick={() => deleteBooking(b.id)}
-                className="text-red-500 hover:underline"
+                className="text-red-400"
               >
-                Cancel
+                Delete
               </button>
             </div>
-          ))}
-        </div>
-
-      </div>
+          </div>
+        ))}
+      </section>
     </div>
   );
 }
+
